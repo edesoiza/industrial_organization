@@ -3,7 +3,7 @@
 tic()
 
 ### Loading data
-  master <- read_parquet(FOLDER("Master data.parquet"))
+  master <- read_parquet(FOLDER("data/Master data.parquet"))
 
 ### Separating out data & making it absolutely filthy
   # Dominant price dataset

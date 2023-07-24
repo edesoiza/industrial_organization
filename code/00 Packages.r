@@ -17,12 +17,12 @@
   library(tictoc)
   library(tidyverse)
   
-  setwd("C:/Users/osgil/OneDrive/Documents/Oeconomica - IO - Case Study")
+  #setwd("C:/Users/osgil/OneDrive/Documents/Oeconomica - IO - Case Study")
   
   # Folder names
   FOLDER <- function(x) {file.path(paste(getwd(), x, sep = "/"))}
   
   # Run R files
-  source(FOLDER("01 Functions.r"))
-  # source(FOLDER("02 Creating data.r"))
-  # source(FOLDER("03 Separating out datasets.r"))
+  source(FOLDER("code/01 Functions.r"))
+  source(FOLDER("code/02 Creating data.r"))
+  source(FOLDER("code/03 Separating out datasets.r"))
