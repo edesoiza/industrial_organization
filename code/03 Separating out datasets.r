@@ -76,6 +76,13 @@ tic()
   # Flavor preference survey dataset
   
 ### Outputting results
+  # Temperature
+  write.xlsx(temperature, FOLDER("Daily temperature data.xlsx"))
   
+  # Ingredients
+  write.xlsx(ingredients, FOLDER("Ingredients price schedule time series.xlsx"))
+  
+  # Shipping costs
+  write.xlsx(shipping_costs, FOLDER("Shipping costs time series.xlsx"))
   
 toc()
