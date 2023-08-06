@@ -15,7 +15,13 @@ tic()
   master <- master %>%
     remove_random_dates(n = 500) %>%
     duplicate_random_dates(n = 500)
-
+  
+  # Identifying conduct period
+  master <- master %>%
+    mutate(conduct_period = 1 * (date %in% seq(conduct_start,
+                                               conduct_end,
+                                               by = "days")))
+  
 ### Creating states
   # Create state row
   master <- master %>%
@@ -89,101 +95,74 @@ tic()
                             id == 10 ~ rnorm(n(), 51.1, 7),
                             id == 11 ~ rnorm(n(), 74.6, 5),
                             id == 12 ~ rnorm(n(), 30.1, 8))) %>%
+    mutate(temp = round(temp, 1)) %>%
     ungroup() %>%
     select(-c("season", "region", "id"))
   
   rm(spring, summer, autumn, winter,
      northern_northeast, southern_northeast, mid_atlantic)
   
-  # Graphing to view results
-  master %>%
-    ggplot(aes(date, temp), group = state) +
-    geom_line(aes(col = state)) +
-    geom_vline(xintercept = conduct_start, alpha = 0.63, size = 1, linetype = "dashed") +
-    geom_vline(xintercept = conduct_end, alpha = 0.63, size = 1, linetype = "dashed") +
-    ggtitle("Seasonal Fluctuations in Temperature") +
-    xlab("") +
-    ylab("Price (USD per unit)") +
-    theme_pubr() +
-    theme(text = element_text(family = "serif"),
-          plot.title = element_text(hjust = 0.5),
-          legend.position = "none")
-
 ### Creating input price data
   # Milk
-  milk_data <- read_excel("data/milk prices.xlsx")
+  milk_data <- read_excel("C:/Users/osgil/Downloads/milk prices.xlsx")
   
   milk_data <- milk_data %>%
     rename(date = Year,
            milk_price = "Average Milk Price by Year*",
            milk_cpi = "Average Annual CPI for Milk**",
            milk_price_real = "Milk Prices Adjusted for Inflation In 2022 Dollars") %>%
-    select(-milk_price_real) %>%
+    select(-milk_price_real, -milk_cpi) %>%
     mutate(date = as.Date(paste(date, "01", "01", sep = "-"))) %>%
     rdts()
   
   master <- master %>%
-    left_join(milk_data, by = "date")
+    left_join(milk_data, by = "date") %>%
+    mutate(milk_price = abs(round(milk_price, 2))) %>%
+    mutate(milk_price = ifelse(milk_price == 0, round(mean(milk_price), 2), milk_price))
   
   rm(milk_data)
   
   # Sugar
+  sugar_data <- read.csv("C:/Users/osgil/Downloads/sugar-prices-historical-chart-data.csv")
+  
+  sugar_data <- sugar_data %>%
+    mutate(date = as.Date(date, "%m/%d/%Y")) %>%
+    rename(sugar_price = value) %>%
+    rdts()
+  
   master <- master %>%
-    group_by(state, year(date), week(date)) %>%
-    mutate(sugar_price = round(rnorm(1, 0.41, 0.09), 2)) %>%
-    mutate(sugar_price = sugar_price + (year(date) - mean(year(date))) / 0.25) %>%
-    ungroup() %>%
-    select(-c("year(date)", "week(date)"))
+    left_join(sugar_data) %>%
+    group_by(state) %>%
+    mutate(sugar_price = abs(round(rnorm(n(), sugar_price, 0.04), 2))) %>%
+    mutate(sugar_price = ifelse(sugar_price == 0, round(mean(sugar_price), 2), sugar_price)) %>%
+    ungroup()
+  
+  rm(sugar_data)
   
   # Eggs
-  master <- master %>%
-    group_by(state, year(date), month(date)) %>%
-    mutate(egg_price = round(rnorm(1, 4.68, 0.98), 2)) %>%
-    mutate(egg_price = egg_price + (year(date) - mean(year(date))) / 1.25) %>%
-    ungroup() %>%
-    select(-c("year(date)", "month(date)"))
+  eggs_data <- read_excel("C:/Users/osgil/Downloads/egg prices.xlsx")
   
-  # Changing prices during Great Recession
-  start_of_recession <- as.Date("2008-11-01")
-  end_of_recession <- as.Date("2010-05-31")
-  recession_period <- seq(start_of_recession, end_of_recession, by = "days")
-  mean_date_num <- mean(as.numeric(start_of_recession), as.numeric(end_of_recession))
-  
-  new_vals_df <- master %>%
-    filter(date %in% recession_period) %>%
-    mutate(egg_price = egg_price * (1.102 * as.numeric(date) ^ 2 - 3 * as.numeric(date)) / mean_date_num ^ 2,
-           sugar_price = sugar_price * (2.079 * as.numeric(date) ^ 2 - 7 * as.numeric(date)) / mean_date_num ^ 2)
+  eggs_data <- eggs_data %>%
+    rename(date = Year,
+           eggs_price = "Average Egg Prices by Year*",
+           eggs_cpi = "Average Annual CPI for Egg**",
+           eggs_price_real = "Egg Prices Adjusted for Inflation in 2022 Dollars") %>%
+    select(-eggs_price_real, -eggs_cpi) %>%
+    mutate(date = as.Date(paste(date, "01", "01", sep = "-"))) %>%
+    rdts(TRUE)
   
   master <- master %>%
-    filter(! date %in% recession_period)
+    left_join(eggs_data) %>%
+    group_by(state) %>%
+    mutate(eggs_price = abs(round(rnorm(n(), eggs_price, 0.04), 2))) %>%
+    mutate(eggs_price = ifelse(eggs_price == 0, round(mean(eggs_price), 2), eggs_price)) %>%
+    ungroup()
   
-  master <- rbind(master, new_vals_df)
+  rm(eggs_data)
   
-  rm(start_of_recession, end_of_recession, recession_period, mean_date_num, new_vals_df)
-  
-  # Graphing results to check ingredient prices over time
-  master %>%
-    pivot_longer(cols = ends_with("_price"),
-                 names_to = "ingredient",
-                 values_to = "price") %>%
-    mutate(ingredient = str_to_upper(str_remove(ingredient, "_price"))) %>%
-    ggplot(aes(date, price), group = c(ingredient, state)) +
-    geom_line(aes(col = ingredient)) +
-    geom_vline(xintercept = conduct_start, alpha = 0.63, size = 1, linetype = "dashed") +
-    geom_vline(xintercept = conduct_end, alpha = 0.63, size = 1, linetype = "dashed") +
-    ggtitle("Ingredients' Costs") +
-    xlab("") +
-    ylab("Price (USD per unit)") +
-    labs(color = "") +
-    theme_pubr() +
-    theme(text = element_text(family = "serif"),
-          plot.title = element_text(hjust = 0.5),
-          legend.position = "right",
-          legend.text = element_text(family = "serif"))
-  
-### Creating shipping costs data
+### Creating shipping costs data for dominant's capital cost advantage
   # Creating oil price data
-  gasoline_data <- read_csv("data/annual-regular-grade-gasoline-prices.csv")
+  gasoline_data <- read_csv("C:/Users/osgil/Downloads/annual-regular-grade-gasoline-prices.csv")
   
   gasoline_data <- gasoline_data %>%
     mutate(date = as.Date(paste(year, "01", "01", sep = "-"))) %>%
@@ -199,36 +178,24 @@ tic()
     select(-c(real_price, nominal_price))
   
   rm(gasoline_data)
-    
-  # Graphing results to check shipping costs over time
-  master %>%
-    ggplot(aes(date, diesel_price), group = state) +
-    geom_line(aes(col = state)) +
-    geom_vline(xintercept = conduct_start, alpha = 0.63, size = 1, linetype = "dashed") +
-    geom_vline(xintercept = conduct_end, alpha = 0.63, size = 1, linetype = "dashed") +
-    ggtitle("Diesel Costs") +
-    xlab("") +
-    ylab("Price (USD per gallon)") +
-    theme_pubr() +
-    theme(text = element_text(family = "serif"),
-          plot.title = element_text(hjust = 0.5),
-          legend.position = "none")
   
-  master %>%
-    ggplot(aes(date, gasoline_price), group = state) +
-    geom_line(aes(col = state)) +
-    geom_vline(xintercept = conduct_start, alpha = 0.63, size = 1, linetype = "dashed") +
-    geom_vline(xintercept = conduct_end, alpha = 0.63, size = 1, linetype = "dashed") +
-    ggtitle("Gasoline Costs") +
-    xlab("") +
-    ylab("Price (USD per gallon)") +
-    theme_pubr() +
-    theme(text = element_text(family = "serif"),
-          plot.title = element_text(hjust = 0.5),
-          legend.position = "none")
+### Creating labor costs data for dominant raising rivals' cost 
+  # Minimum wage panel data
+  
+  # Labor costs data
+  union_success_date <- as.Date("2004-08-23")
+  
+  # master <- master %>%
+  #   group_by(year(date)) %>% 
+  #   mutate(wage = minimum_wage + rnorm(1, 5, 0.05)) %>%
+  #   ungroup() %>%
+  #   mutate(wage = case_when(date >= union_success_date ~ wage + 10,
+  #                           TRUE ~ wage))
+  
+  rm(union_success_date)
   
 ### Creating flavor preference survey data
-  # Creating random
+  # Creating random preference data
   
   # Vegan/Allergen-free option
   
@@ -245,7 +212,7 @@ tic()
   # Defendants
   
 ### Saving out master dataset ###
-  write.csv(master, FOLDER("data/Master data.csv"))
-  write_parquet(master, FOLDER("data/Master data.parquet"))
-  
+  write.csv(master, FOLDER("Master data.csv"))
+  write_parquet(master, FOLDER("Master data.parquet"))
+
 toc()

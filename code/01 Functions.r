@@ -71,9 +71,9 @@
       }
       
       .dates <- append(.dates, as.Date(paste(.years[i],
-                                                         .months[i],
-                                                         .days[i],
-                                                         sep = "-")))
+                                             .months[i],
+                                             .days[i],
+                                             sep = "-")))
       
     }
     
@@ -97,7 +97,7 @@
     return(df)
     
   }
-  
+
 ### Duplicating random rows in a dataframe
   duplicate_random_dates <- function(df, n = 1) {
     # Type and feasibility checks
@@ -116,7 +116,7 @@
     return(df)
     
   }
-  
+
 ### Creating smooth daily-level time series with random fluctuations
   rdts <- function(df, heteroskedastic = FALSE, homoskedastic_sd = 0.04) {
     # Type and feasibility checks
@@ -148,7 +148,7 @@
         mutate("{variable}" := pmax(.data[[paste(variable, ".x", sep = "")]],
                                     .data[[paste(variable, ".y", sep = "")]],
                                     na.rm = TRUE))
-
+      
     }
     
     df_full <- df_full %>%
@@ -180,8 +180,9 @@
              .direction = "updown") %>%
         fill(.data[[paste(variable, "_max_id", sep = "")]],
              .direction = "updown") %>%
+        filter(n() != 1) %>%
         ungroup() %>%
-        filter(.data[[paste(variable, "_min_id", sep = "")]] != .data[[paste(variable, "_max_id", sep = "")]]) %>%
+        # filter(.data[[paste(variable, "_min_id", sep = "")]] != .data[[paste(variable, "_max_id", sep = "")]]) %>%
         group_by(year(date)) %>%
         mutate("{variable}" := case_when(.data[[paste(variable, "_min_id", sep = "")]] <
                                            .data[[paste(variable, "_max_id", sep = "")]] ~
@@ -193,12 +194,13 @@
                                            seq(max(.data[[variable]], na.rm = TRUE),
                                                min(.data[[variable]], na.rm = TRUE),
                                                by = -1 * (max(.data[[variable]], na.rm = TRUE) - min(.data[[variable]], na.rm = TRUE)) / (n() - 1)),
-                                         TRUE ~ .data[[variable]])) %>%
+                                         TRUE ~ .data[[paste(variable, "_min", sep = "")]])) %>%
         ungroup() %>%
         group_by(week(date)) %>%
         mutate(sd = case_when(heteroskedastic ~ sum((.data[[variable]] - mean(.data[[variable]])) ^ 2) / (20 * (n() + 2)),
                               TRUE ~ homoskedastic_sd)) %>%
         ungroup() %>%
+        fill(.data[[variable]]) %>%
         mutate("{variable}" := rnorm(n(), .data[[variable]], sd))
       
     }
@@ -207,5 +209,72 @@
       select(!contains(c("_min", "_max", "id", "sd", "year(date)", "week(date)")))
     
     return(df_full)
+    
+  }
+
+### Defining standard theme for graphs in 04
+  theme_dc <- function(legend = "none") {
+    # Type and feasibility checks
+    stopifnot(legend %in% c("none", "legend"))
+    
+    # Themes
+    if (legend == "none") {
+      hrbrthemes::theme_ft_rc(
+        base_family = "Candara",
+        axis_title_size = 11.5,
+        ticks = TRUE
+        
+      ) +
+        ggplot2::theme(
+          aspect.ratio = 0.73,
+          axis.line = element_line(color = "#FEFEFE"),
+          axis.text.x = element_text(color = "#FEFEFE",
+                                     angle = 48,
+                                     hjust = 1.1,
+                                     vjust = 1.05),
+          axis.text.y = element_text(color = "#FEFEFEFE"),
+          axis.ticks = element_line(color = "#FEFEFE"),
+          axis.title = element_text(color = "#FEFEFE"),
+          legend.position = "none",
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          plot.title = element_text(hjust = 0.5)
+          
+        )
+      
+    } else if (legend == "legend") {
+      hrbrthemes::theme_ft_rc(
+        base_family = "Candara",
+        axis_title_size = 11.5,
+        ticks = TRUE
+        
+      ) +
+        ggplot2::theme(
+          aspect.ratio = 0.73,
+          axis.line = element_line(color = "#FEFEFE"),
+          axis.text.x = element_text(color = "#FEFEFE",
+                                     angle = 48,
+                                     hjust = 1.1,
+                                     vjust = 1.05),
+          axis.text.y = element_text(color = "#FEFEFEFE"),
+          axis.ticks = element_line(color = "#FEFEFE"),
+          axis.title = element_text(color = "#FEFEFE",
+                                    hjust = 0.5,
+                                    vjust = 0.5),
+          legend.background = element_rect(color = "#EEFCFC",
+                                           linewidth = 0.7),
+          legend.position = "right",
+          legend.text = element_text(color = "#EEFCFC"),
+          legend.title = element_text(color = "#EEFCFC"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          plot.title = element_text(hjust = 0.5)
+          
+        )
+      
+    } else {
+      print("ERROR: Incorrect specification for value 'legend'")
+      
+    }
     
   }
