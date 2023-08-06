@@ -104,7 +104,7 @@ tic()
   
 ### Creating input price data
   # Milk
-  milk_data <- read_excel("C:/Users/osgil/Downloads/milk prices.xlsx")
+  milk_data <- read_excel("data/milk prices.xlsx")
   
   milk_data <- milk_data %>%
     rename(date = Year,
@@ -123,7 +123,7 @@ tic()
   rm(milk_data)
   
   # Sugar
-  sugar_data <- read.csv("C:/Users/osgil/Downloads/sugar-prices-historical-chart-data.csv")
+  sugar_data <- read.csv("data/sugar-prices-historical-chart-data.csv")
   
   sugar_data <- sugar_data %>%
     mutate(date = as.Date(date, "%m/%d/%Y")) %>%
@@ -140,7 +140,7 @@ tic()
   rm(sugar_data)
   
   # Eggs
-  eggs_data <- read_excel("C:/Users/osgil/Downloads/egg prices.xlsx")
+  eggs_data <- read_excel("data/egg prices.xlsx")
   
   eggs_data <- eggs_data %>%
     rename(date = Year,
@@ -162,7 +162,7 @@ tic()
   
 ### Creating shipping costs data for dominant's capital cost advantage
   # Creating oil price data
-  gasoline_data <- read_csv("C:/Users/osgil/Downloads/annual-regular-grade-gasoline-prices.csv")
+  gasoline_data <- read_csv("data/annual-regular-grade-gasoline-prices.csv")
   
   gasoline_data <- gasoline_data %>%
     mutate(date = as.Date(paste(year, "01", "01", sep = "-"))) %>%
