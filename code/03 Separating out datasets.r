@@ -3,7 +3,7 @@
 tic()
 
 ### Loading data
-  master <- read_parquet(FOLDER("Master data.parquet"))
+  master <- read_parquet(FOLDER("data/Master data.parquet"))
   
 ### Separating out data & making it absolutely filthy
   # Dominant price dataset
@@ -77,12 +77,12 @@ tic()
   
 ### Outputting results
   # Temperature
-  write.xlsx(temperature, FOLDER("Daily temperature data.xlsx"))
+  write.xlsx(temperature, FOLDER("output/Daily temperature data.xlsx"))
   
   # Ingredients
-  write.xlsx(ingredients, FOLDER("Ingredients price schedule time series.xlsx"))
+  write.xlsx(ingredients, FOLDER("output/Ingredients price schedule time series.xlsx"))
   
   # Shipping costs
-  write.xlsx(shipping_costs, FOLDER("Shipping costs time series.xlsx"))
+  write.xlsx(shipping_costs, FOLDER("output/Shipping costs time series.xlsx"))
   
 toc()

@@ -104,7 +104,7 @@ tic()
   
 ### Creating input price data
   # Milk
-  milk_data <- read_excel("data/milk prices.xlsx")
+  milk_data <- read_excel("data/raw_data/milk prices.xlsx")
   
   milk_data <- milk_data %>%
     rename(date = Year,
@@ -123,7 +123,7 @@ tic()
   rm(milk_data)
   
   # Sugar
-  sugar_data <- read.csv("data/sugar-prices-historical-chart-data.csv")
+  sugar_data <- read.csv("data/raw_data/sugar-prices-historical-chart-data.csv")
   
   sugar_data <- sugar_data %>%
     mutate(date = as.Date(date, "%m/%d/%Y")) %>%
@@ -140,7 +140,7 @@ tic()
   rm(sugar_data)
   
   # Eggs
-  eggs_data <- read_excel("data/egg prices.xlsx")
+  eggs_data <- read_excel("data/raw_data/egg prices.xlsx")
   
   eggs_data <- eggs_data %>%
     rename(date = Year,
@@ -162,7 +162,7 @@ tic()
   
 ### Creating shipping costs data for dominant's capital cost advantage
   # Creating oil price data
-  gasoline_data <- read_csv("data/annual-regular-grade-gasoline-prices.csv")
+  gasoline_data <- read_csv("data/raw_data/annual-regular-grade-gasoline-prices.csv")
   
   gasoline_data <- gasoline_data %>%
     mutate(date = as.Date(paste(year, "01", "01", sep = "-"))) %>%
@@ -212,7 +212,7 @@ tic()
   # Defendants
   
 ### Saving out master dataset ###
-  write.csv(master, FOLDER("Master data.csv"))
-  write_parquet(master, FOLDER("Master data.parquet"))
+  write.csv(master, FOLDER("data/Master data.csv"))
+  write_parquet(master, FOLDER("data/Master data.parquet"))
 
 toc()
