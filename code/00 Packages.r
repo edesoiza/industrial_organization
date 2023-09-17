@@ -17,6 +17,7 @@
   library(lmtest)
   library(lubridate)
   library(openxlsx)
+  library(purrr)
   library(readxl)
   library(sandwich)
   library(stargazer)
