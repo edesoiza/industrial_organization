@@ -2,7 +2,7 @@
 
 tic()
 
-### Temperature
+#### Temperature ####
   master %>%
     ggplot(aes(date, temp), group = state) +
     geom_line(aes(col = state)) +
@@ -35,7 +35,7 @@ tic()
                       name = "fill",
                       guide = "none")
   
-### Ingredients cost
+#### Ingredients cost ####
   master %>%
     pivot_longer(cols = c(milk_price, eggs_price, sugar_price),
                  names_to = "ingredient",
@@ -64,7 +64,7 @@ tic()
                       name = "fill",
                       guide = "none")
   
-### Oil prices
+#### Oil prices ####
   # Diesel prices
   master %>%
     ggplot(aes(date, diesel_price), group = state) +
@@ -108,5 +108,11 @@ tic()
                     alpha = 0.05)) +
     scale_fill_manual(values = c("#000000", "#A7A7A7"),
                       name = "fill")
+
+#### Wages ####
   
+#### Prices ####
+  
+#### EOF ####  
+    
 toc()

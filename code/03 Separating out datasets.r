@@ -2,10 +2,10 @@
 
 tic()
 
-### Loading data
+#### Loading data ####
   master <- read_parquet(FOLDER("data/Master data.parquet"))
   
-### Separating out data & making it absolutely filthy
+#### Separating out data & making it absolutely filthy ####
   # Dominant price dataset
   
   # Defendants' price datasets
@@ -75,7 +75,7 @@ tic()
   
   # Flavor preference survey dataset
   
-### Outputting results
+#### Outputting results ####
   # Temperature
   write.xlsx(temperature, FOLDER("output/Daily temperature data.xlsx"))
   
@@ -84,5 +84,7 @@ tic()
   
   # Shipping costs
   write.xlsx(shipping_costs, FOLDER("output/Shipping costs time series.xlsx"))
-  
+
+#### EOF ####
+    
 toc()
