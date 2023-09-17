@@ -240,15 +240,25 @@ tic()
   master <- master %>%
     mutate(year = year(date)) %>%
     group_by(year) %>%
-    mutate(wage = round(minimum_wage + rnorm(1, 1, 0.05) + cur_group_id() / 30, 2)) %>%
+    mutate(dominant_wage = round(minimum_wage + rnorm(1, 1, 0.05) + cur_group_id() / 30, 2),
+           defendant_1_wage = round(minimum_wage + rnorm(1, 1.5, 0.30) + cur_group_id() / 30, 2),
+           defendant_2_wage = round(minimum_wage + rnorm(1, 1.3, 0.30) + cur_group_id() / 30, 2),
+           defendant_3_wage = case_when(minimum_wage <= 10.0 ~ round(minimum_wage + rnorm(1, 5, 0.25), 2),
+                                        TRUE ~ round(minimum_wage + rnorm(1, 2, 0.25), 2)),
+           defendant_4_wage = round(minimum_wage + rnorm(1, 0.5, 0.05) + cur_group_id() / 32, 2),
+           defendant_5_wage = round(minimum_wage + rnorm(1, 1, 0.05) + cur_group_id() / 30, 2),
+           defendant_6_wage = round(minimum_wage + rnorm(1, 0.2, 0.01) + cur_group_id() / 60, 2),
+           defendant_7_wage = 50) %>%
     ungroup() %>%
     group_by(state, year) %>%
     arrange(year) %>%
-    mutate(wage = case_when(wage > lead(wage) ~ lead(wage),
-                            TRUE ~ wage)) %>%
+    mutate(dominant_wage = case_when(dominant_wage > lead(dominant_wage) ~ lead(dominant_wage),
+                            TRUE ~ dominant_wage)) %>%
     ungroup() %>%
-    mutate(wage = case_when(date >= union_success_date ~ wage + 2.86,
-                            TRUE ~ wage)) %>%
+    mutate(dominant_wage = case_when(date >= union_success_date ~ dominant_wage + 2.86,
+                            TRUE ~ dominant_wage)) %>%
+    mutate(across(contains("defendant_"), ~case_when(date >= union_success_date + years(6) + months(3) + days(round(rnorm(1, 6, 7), 0)) ~ round(dominant_wage + rnorm(1, 1, 1.1), 2),
+                                                    TRUE ~ .))) %>%
     select(-year) %>%
     arrange(date)
   
@@ -260,14 +270,61 @@ tic()
   # Vegan/Allergen-free option
   
 ### Creating "complement" and "substitute" data
+  temp_na_as_zero <- master %>%
+    replace(is.na(.), 0)
+  
   # Complement (waffle cones)
+  temp_na_as_zero <- temp_na_as_zero %>%
+    mutate(waffle_cone_price = round(0.02 + 0.285 * milk_price + 0.054 * sugar_price + 0.611 * eggs_price + 0.030 * gasoline_price ^ 2, 2))
+  
+  master[, "waffle_cone_price"] <- temp_na_as_zero[, "waffle_cone_price"]
   
   # Substitute (frozen yogurt)
+  temp_na_as_zero <- temp_na_as_zero %>%
+    mutate(frozen_yogurt_price = round(0.11 + 0.375 * milk_price + 0.254 * 1 / sugar_price + 0.326 * eggs_price + 0.025 * gasoline_price ^ 2, 2))
+  
+  master[, "frozen_yogurt_price"] <- temp_na_as_zero[, "frozen_yogurt_price"]
+  
+  rm(temp_na_as_zero)
   
 ### Creating advertising spending data
   
+### Removing defendants in states where they do not operate
+  defendant_1_states <- c("ME", "NH", "VT", "MA", "RI", "CT")
+  defendant_2_states <- c("CT", "RI", "NY", "NJ")
+  defendant_3_states <- c("NY", "PA", "NJ", "DE", "MD", "VA")
+  defendant_4_states <- c("CT", "NY", "NJ")
+  defendant_5_states <- c("MA", "RI", "CT", "NY", "PA", "MD", "VA", "OH")
+  defendant_6_states <- c("NY", "NJ", "DE", "MD", "VA", "NC", "SC")
+  defendant_7_states <- c("ME", "NH", "VT")
+  
+  master <- master %>%
+    mutate(defendant_1_wage = case_when(state %in% defendant_1_states ~ defendant_1_wage,
+                                        TRUE ~ NA),
+           defendant_2_wage = case_when(state %in% defendant_2_states ~ defendant_2_wage,
+                                        TRUE ~ NA),
+           defendant_3_wage = case_when(state %in% defendant_3_states ~ defendant_3_wage,
+                                        TRUE ~ NA),
+           defendant_4_wage = case_when(state %in% defendant_4_states ~ defendant_4_wage,
+                                        TRUE ~ NA),
+           defendant_5_wage = case_when(state %in% defendant_5_states ~ defendant_5_wage,
+                                        TRUE ~ NA),
+           defendant_6_wage = case_when(state %in% defendant_6_states ~ defendant_6_wage,
+                                        TRUE ~ NA),
+           defendant_7_wage = case_when(state %in% defendant_7_states ~ defendant_7_wage,
+                                        TRUE ~ NA))
+  
+  rm(defendant_1_states, defendant_2_states, defendant_3_states, defendant_4_states, defendant_5_states, defendant_6_states, defendant_7_states)
+  
 ### Creating price data
+  master <- master %>%
+    select(-random_value)
+  
   # Dominant
+  for (date in 1:nrow(master)) {
+    
+    
+  }
   
   # Defendants
   
