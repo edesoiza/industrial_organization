@@ -181,16 +181,76 @@ tic()
   
 ### Creating labor costs data for dominant raising rivals' cost 
   # Minimum wage panel data
+  minimum_wage_data <- read_excel("data/raw_data/historial_minimum_wage_data.xlsx")
   
+  names(minimum_wage_data) <- str_squish(str_replace(str_remove_all(names(minimum_wage_data), "\\([a-z]\\)"), "State or other", "state"))
+  temp <- data.frame(t(minimum_wage_data))
+  names(temp) <- temp[1,]
+  temp <- temp[2:nrow(temp), 2:ncol(temp)]
+  minimum_wage_data <- temp
+  
+  rm(temp)
+  
+  all_years_df <- data.frame("year" = c(1968:2022))
+  
+  minimum_wage_data <- minimum_wage_data %>%
+    mutate(across(everything(), ~as.numeric(str_squish(str_replace_all(., c("\\$" = "",
+                                                                            "&[\\s\\w\\d\\$.]*" = "",
+                                                                            "\\.\\.\\." = "",
+                                                                            "\\(\\w*\\)" = "",
+                                                                            "-[\\s\\w\\d\\$.]*" = "",
+                                                                            "\\/[\\s\\w\\d\\$.]*" = "",
+                                                                            "^(.\\d\\d)" = "0\\1")))))) %>%
+    mutate(year = as.numeric(row.names(.)))
+    
+  minimum_wage_data <- all_years_df %>%
+    left_join(minimum_wage_data, by = "year") %>%
+    pivot_longer(cols = -year,
+                 names_to = "state",
+                 values_to = "minimum_wage") %>%
+    group_by(state) %>%
+    arrange(year) %>%
+    fill(minimum_wage, .direction = "down") %>%
+    ungroup() %>%
+    mutate(state = case_when(state == "Maine" ~ "ME",
+                             state == "New Hampshire" ~ "NH",
+                             state == "Vermont" ~ "VT",
+                             state == "Massachusetts" ~ "MA",
+                             state == "Rhode Island" ~ "RI",
+                             state == "Connecticut" ~ "CT",
+                             state == "New York" ~ "NY",
+                             state == "Pennsylvania" ~ "PA",
+                             state == "New Jersey" ~ "NJ",
+                             state == "Delaware" ~ "DE",
+                             state == "Maryland" ~ "MD",
+                             state == "Virginia" ~ "VA"))
+  
+  rm(all_years_df)
+  
+  master <- master %>%
+    mutate(year = year(date)) %>%
+    left_join(minimum_wage_data, by = c("year", "state")) %>%
+    select(-year)
+  
+  rm(minimum_wage_data)
+    
   # Labor costs data
   union_success_date <- as.Date("2004-08-23")
   
-  # master <- master %>%
-  #   group_by(year(date)) %>% 
-  #   mutate(wage = minimum_wage + rnorm(1, 5, 0.05)) %>%
-  #   ungroup() %>%
-  #   mutate(wage = case_when(date >= union_success_date ~ wage + 10,
-  #                           TRUE ~ wage))
+  master <- master %>%
+    mutate(year = year(date)) %>%
+    group_by(year) %>%
+    mutate(wage = round(minimum_wage + rnorm(1, 1, 0.05) + cur_group_id() / 30, 2)) %>%
+    ungroup() %>%
+    group_by(state, year) %>%
+    arrange(year) %>%
+    mutate(wage = case_when(wage > lead(wage) ~ lead(wage),
+                            TRUE ~ wage)) %>%
+    ungroup() %>%
+    mutate(wage = case_when(date >= union_success_date ~ wage + 2.86,
+                            TRUE ~ wage)) %>%
+    select(-year) %>%
+    arrange(date)
   
   rm(union_success_date)
   
@@ -211,6 +271,7 @@ tic()
   
   # Defendants
   
+
 ### Saving out master dataset ###
   write.csv(master, FOLDER("data/Master data.csv"))
   write_parquet(master, FOLDER("data/Master data.parquet"))
