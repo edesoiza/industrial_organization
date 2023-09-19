@@ -422,7 +422,8 @@ tic()
   
   rm(temp_na_as_zero)
     
-#### XYZ ####
+#### Removing prices in states where not operating & rounding all prices ####
+  # Removing defendants' prices in states where not operating
   for (defendant in 1:7) {
     master <- master %>%
       mutate("defendant_{defendant}_price" := case_when(is.na(.data[[paste("defendant_", defendant, "_wage", sep = "")]]) ~ NA,
@@ -432,6 +433,10 @@ tic()
 
   rm(defendant)
   
+  # Rounding all prices
+  master <- master %>%
+    mutate(across(contains("_price"), ~round(., 2)))
+  
 #### Saving out master dataset ####
   write.csv(master, FOLDER("data/Master data.csv"))
   write_parquet(master, FOLDER("data/Master data.parquet"))
@@ -439,4 +444,3 @@ tic()
 #### EOF ####
   
 toc()
-  
