@@ -421,6 +421,14 @@ tic()
   master[, "dominant_sales"] <- temp_na_as_zero[, "dominant_sales"]
   
   rm(temp_na_as_zero)
+  
+  # Reporting only weekly sales
+  master <- master %>%
+    group_by(state, year(date), week(date)) %>%
+    mutate(dominant_sales = mean(dominant_sales, na.rm = TRUE)) %>%
+    ungroup() %>%
+    select(-c("year(date)", "week(date)")) %>%
+    mutate(across(everything(), ~if_else(is.nan(.), NA, .)))
     
 #### Removing prices in states where not operating & rounding all prices ####
   # Removing defendants' prices in states where not operating
