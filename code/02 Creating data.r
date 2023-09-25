@@ -58,8 +58,7 @@ tic()
                                   state == "MD" ~ as.Date("2000-05-01"),
                                   state == "VA" ~ as.Date("2000-05-01"),
                                   TRUE ~ as.Date("1997-06-02"))) %>%
-    filter(date >= entry_date) %>%
-    select(-c("entry_date"))
+    filter(date >= entry_date)
   
 #### Creating seasonal temperature changes ####
   # Identifying seasons and regions
@@ -314,41 +313,70 @@ tic()
   master <- master %>%
     select(-random_value)
   
-  temp_na_as_zero <- master %>%
-    mutate(temp = temp + abs(min(temp)) + 1) %>%
-    replace(is.na(.), 1)
-  
   all_dates <- seq(start_date, end_date, by = "days")
   
+  temp_na_as_zero <- master %>%
+    mutate(temp = temp + abs(min(temp)) + 1) %>%
+    mutate(min_index = match(entry_date, all_dates)) %>%
+    replace(is.na(.), 1)
+  
   # Dominant
-  print(paste("Working on date ", start_date, ": 1 / ", nrow(temp_na_as_zero)))
+  print(paste("Working on dominant firm, date ", start_date, ": 1 / ", length(all_dates)))
   temp_na_as_zero <- temp_na_as_zero %>%
     mutate(log_dominant_price = round(0.005 * log(temp) +
-                                        0.025 * (log(temp)) ^ 2 +
+                                        0.015 * (log(temp)) ^ 2 +
                                         0.190 * log(milk_price) +
-                                        0.090 * log(sugar_price) +
+                                        0.085 * log(sugar_price) +
                                         0.130 * log(eggs_price) +
                                         0.330 * log(gasoline_price) +
                                         0.030 * log(dominant_wage) +
                                         0.030 * 3.00 +
-                                        0.170 * conduct_period +
                                         rnorm(1, 0.01, 0.01), 2))
 
   for (day in 2:length(all_dates)) {
-    print(paste("Working on date ", all_dates[day], ": ", day, " / ", nrow(temp_na_as_zero)))
+    print(paste("Working on dominant firm, date ", all_dates[day], ": ", day, " / ", length(all_dates)))
     temp_na_as_zero <- temp_na_as_zero %>%
       group_by(state) %>%
       arrange(date) %>%
-      mutate(log_dominant_price = case_when(date == all_dates[day] ~ round(0.005 * log(temp) +
-                                                                             0.025 * (log(temp)) ^ 2 +
+      mutate(log_dominant_price = case_when(date == all_dates[day] &
+                                              day > min_index + 14 ~ round(0.005 * log(temp) +
+                                                                             0.015 * (log(temp)) ^ 2 +
                                                                              0.190 * log(milk_price) +
-                                                                             0.090 * log(sugar_price) +
+                                                                             0.015 * lag(log(milk_price), 7L) +
+                                                                             0.002 * log(milk_price) * conduct_period +
+                                                                             0.085 * log(sugar_price) +
+                                                                             0.005 * lag(log(sugar_price), 7L) +
+                                                                             0.002 * log(sugar_price) * conduct_period +
                                                                              0.130 * log(eggs_price) +
+                                                                             0.020 * lag(log(eggs_price), 7L) +
+                                                                             0.002 * log(eggs_price) * conduct_period +
+                                                                             0.001 * log(milk_price) * log(eggs_price) +
                                                                              0.330 * log(gasoline_price) +
-                                                                             0.030 * log(dominant_wage) +
-                                                                             0.030 * lag(log_dominant_price) +
-                                                                             0.170 * conduct_period +
+                                                                             -0.003 * log(gasoline_price) * conduct_period +
+                                                                             0.020 * lag(log_dominant_price) +
+                                                                             0.005 * lag(log_dominant_price, 2L) +
+                                                                             0.003 * lag(log_dominant_price, 3L) +
+                                                                             0.002 * lag(log_dominant_price, 4L) +
+                                                                             -0.002 * lag(log_dominant_price, 1L) * conduct_period +
+                                                                             rlnorm(1, 0.17, 0.03) * conduct_period +
                                                                              rnorm(1, 0.01, 0.01), 2),
+                                            date == all_dates[day] &
+                                              day <= min_index + 14 &
+                                              day > min_index ~ round(0.005 * log(temp) +
+                                                                        0.015 * (log(temp)) ^ 2 +
+                                                                        0.190 * log(milk_price) +
+                                                                        0.002 * log(milk_price) * conduct_period +
+                                                                        0.085 * log(sugar_price) +
+                                                                        0.002 * log(sugar_price) * conduct_period +
+                                                                        0.130 * log(eggs_price) +
+                                                                        0.002 * log(eggs_price) * conduct_period +
+                                                                        0.001 * log(milk_price) * log(eggs_price) +
+                                                                        0.330 * log(gasoline_price) +
+                                                                        -0.003 * log(gasoline_price) * conduct_period +
+                                                                        0.020 * lag(log_dominant_price) +
+                                                                        -0.002 * lag(log_dominant_price, 1L) * conduct_period +
+                                                                        rlnorm(1, 0.17, 0.03) * conduct_period +
+                                                                        rnorm(1, 0.01, 0.01), 2),
                                             TRUE ~ log_dominant_price)) %>%
       mutate(dominant_price = exp(log_dominant_price)) %>%
       ungroup() %>%
@@ -360,7 +388,7 @@ tic()
   
   # Defendants
   for (defendant in 1:7) {
-    print(paste("Working on defendant ", defendant, ", date ", start_date, ": 1 / ", nrow(temp_na_as_zero)))
+    print(paste("Working on dominant ", defendant, ", date ", start_date, ": 1 / ", length(all_dates)))
     temp_na_as_zero <- temp_na_as_zero %>%
       mutate("log_defendant_{defendant}_price" := round(0.005 * log(temp) +
                                           0.025 * (log(temp)) ^ 2 +
@@ -370,24 +398,57 @@ tic()
                                           0.330 * log(diesel_price) +
                                           0.030 * log(.data[[paste("defendant_", defendant, "_wage", sep = "")]]) +
                                           0.030 * 4.00 +
-                                          0.170 * conduct_period +
+                                          -0.170 * conduct_period +
                                           rnorm(1, 0.01, 0.01), 2))
     
     for (day in 2:length(all_dates)) {
-      print(paste("Working on defendant ", defendant, ", date ", all_dates[day], ": ", day, " / ", nrow(temp_na_as_zero)))
+      print(paste("Working on dominant ", defendant, ", date ", all_dates[day], ": ", day, " / ", length(all_dates)))
       temp_na_as_zero <- temp_na_as_zero %>%
         group_by(state) %>%
         arrange(date) %>%
-        mutate("log_defendant_{defendant}_price" := case_when(date == all_dates[day] ~ round(0.005 * log(temp) +
-                                                                               0.025 * (log(temp)) ^ 2 +
-                                                                               0.190 * log(milk_price) +
-                                                                               0.090 * log(sugar_price) +
-                                                                               0.130 * log(eggs_price) +
-                                                                               0.330 * log(diesel_price) +
-                                                                               0.030 * log(.data[[paste("defendant_", defendant, "_wage", sep = "")]]) +
-                                                                               0.030 * lag(.data[[paste("log_defendant_", defendant, "_price", sep = "")]]) +
-                                                                               0.170 * conduct_period +
-                                                                               rnorm(1, 0.01, 0.01), 2),
+        mutate("log_defendant_{defendant}_price" := case_when(date == all_dates[day] &
+                                                                day > min_index + 14 ~ round(0.005 * log(temp) +
+                                                                                               0.015 * (log(temp)) ^ 2 +
+                                                                                               0.190 * log(milk_price) +
+                                                                                               0.015 * lag(log(milk_price), 7L) +
+                                                                                               0.002 * log(milk_price) * conduct_period +
+                                                                                               0.085 * log(sugar_price) +
+                                                                                               0.005 * lag(log(sugar_price), 7L) +
+                                                                                               0.002 * log(sugar_price) * conduct_period +
+                                                                                               0.130 * log(eggs_price) +
+                                                                                               0.020 * lag(log(eggs_price), 7L) +
+                                                                                               0.002 * log(eggs_price) * conduct_period +
+                                                                                               0.001 * log(milk_price) * log(eggs_price) +
+                                                                                               0.330 * log(gasoline_price) +
+                                                                                               -0.003 * log(gasoline_price) * conduct_period +
+                                                                                               0.020 * lag(log_dominant_price) +
+                                                                                               0.005 * lag(log_dominant_price, 2L) +
+                                                                                               0.003 * lag(log_dominant_price, 3L) +
+                                                                                               0.002 * lag(log_dominant_price, 4L) +
+                                                                                               -0.002 * lag(log_dominant_price, 1L) * conduct_period +
+                                                                                               0.030 * log(.data[[paste("defendant_", defendant, "_wage", sep = "")]]) +
+                                                                                               0.030 * lag(.data[[paste("log_defendant_", defendant, "_price", sep = "")]]) +
+                                                                                               -rlnorm(1, 0.17, 0.03) * conduct_period +
+                                                                                               rnorm(1, 0.01, 0.01), 2),
+                                                              date == all_dates[day] &
+                                                                day <= min_index + 14 &
+                                                                day > min_index ~ round(0.005 * log(temp) +
+                                                                                          0.015 * (log(temp)) ^ 2 +
+                                                                                          0.190 * log(milk_price) +
+                                                                                          0.002 * log(milk_price) * conduct_period +
+                                                                                          0.085 * log(sugar_price) +
+                                                                                          0.002 * log(sugar_price) * conduct_period +
+                                                                                          0.130 * log(eggs_price) +
+                                                                                          0.002 * log(eggs_price) * conduct_period +
+                                                                                          0.001 * log(milk_price) * log(eggs_price) +
+                                                                                          0.330 * log(gasoline_price) +
+                                                                                          -0.003 * log(gasoline_price) * conduct_period +
+                                                                                          0.020 * lag(log_dominant_price) +
+                                                                                          0.030 * log(.data[[paste("defendant_", defendant, "_wage", sep = "")]]) +
+                                                                                          0.030 * lag(.data[[paste("log_defendant_", defendant, "_price", sep = "")]]) +
+                                                                                          -0.002 * lag(log_dominant_price, 1L) * conduct_period +
+                                                                                          -rlnorm(1, 0.17, 0.03) * conduct_period +
+                                                                                          rnorm(1, 0.01, 0.01), 2),
                                               TRUE ~ .data[[paste("log_defendant_", defendant, "_price", sep = "")]])) %>%
         mutate("defendant_{defendant}_price" := exp(.data[[paste("log_defendant_", defendant, "_price", sep = "")]])) %>%
         ungroup() %>%
@@ -400,21 +461,30 @@ tic()
   }
   
   rm(temp_na_as_zero, all_dates, day, defendant)
+  
+  # Reporting only weekly prices
+  master <- master %>%
+    group_by(state, year(date), week(date)) %>%
+    mutate(across(contains("_price") & (starts_with("do") | starts_with("de")),
+                  ~mean(., na.rm = TRUE))) %>%
+    ungroup() %>%
+    select(-c("year(date)", "week(date)")) %>%
+    mutate(across(everything(), ~if_else(is.nan(.), NA, .)))
 
 #### Creating defendant firm sales data ####
   # Generating sales
   temp_na_as_zero <- master %>%
     replace(is.na(.), 1)
   
-  temp_na_as_zero <- master %>%
-    mutate(dominant_sales = (-2 * dominant_price +
-                              0.4 * defendant_1_price +
-                              0.2 * defendant_2_price +
-                              0.3 * defendant_3_price +
-                              0.5 * defendant_4_price +
-                              0.1 * defendant_5_price +
-                              0.6 * defendant_6_price +
-                              0.7 * defendant_7_price) * 10000) %>%
+  temp_na_as_zero <- temp_na_as_zero %>%
+    mutate(dominant_sales = (-rnorm(1, -2, 0.15) * dominant_price +
+                              rnorm(1, 0.4, 0.15) * defendant_1_price +
+                              rnorm(1, 0.2, 0.15) * defendant_2_price +
+                              rnorm(1, 0.3, 0.15) * defendant_3_price +
+                              rnorm(1, 0.5, 0.15) * defendant_4_price +
+                              rnorm(1, 0.1, 0.15) * defendant_5_price +
+                              rnorm(1, 0.6, 0.15) * defendant_6_price +
+                              rnorm(1, 0.7, 0.15) * defendant_7_price) * 1000) %>%
     mutate(dominant_sales = case_when(dominant_sales <= 0 ~ 0,
                                        TRUE ~ dominant_sales))
   
@@ -444,6 +514,66 @@ tic()
   # Rounding all prices
   master <- master %>%
     mutate(across(contains("_price"), ~round(., 2)))
+  
+#### Adding red herring data ####
+  # Sticky-price CPI less food & energy
+  cpi_data <- read_csv("data/raw_data/CORESTICKM159SFRBATL.csv")
+  
+  names(cpi_data) <- c("date", "cpi_less_food_and_energy")
+  
+  cpi_data <- cpi_data %>%
+    mutate(date = as.Date(date, "%m/%d/%Y"),
+           cpi_less_food_and_energy = as.numeric(cpi_less_food_and_energy)) %>%
+    rdts()
+  
+  master <- master %>%
+    left_join(cpi_data)
+  
+  rm(cpi_data)
+  
+  # EFFR
+  effr_data <- read_csv("data/raw_data/DFF.csv")
+  
+  names(effr_data) <- c("date", "effr")
+  
+  effr_data <- effr_data %>%
+    mutate(date = as.Date(date, "%m/%d/%Y"),
+           effr = as.numeric(effr))
+  
+  master <- master %>%
+    left_join(effr_data)
+  
+  rm(effr_data)
+  
+  # Unemployment rate
+  unemployment_rate_data <- read_csv("data/raw_data/UNRATE.csv")
+  
+  names(unemployment_rate_data) <- c("date", "unemployment_rate")
+  
+  unemployment_rate_data <- unemployment_rate_data %>%
+    mutate(date = as.Date(date, "%m/%d/%Y"),
+           unemployment_rate = as.numeric(unemployment_rate)) %>%
+    rdts()
+  
+  master <- master %>%
+    left_join(unemployment_rate_data)
+  
+  rm(unemployment_rate_data)
+  
+  # Total national ice cream production level relative to 2017 level
+  national_production_data <- read.csv("data/raw_data/IPN31152N.csv")
+  
+  names(national_production_data) <- c("date", "national_ice_cream_production_level")
+  
+  national_production_data <- national_production_data %>%
+    mutate(date = as.Date(date, "%m/%d/%Y"),
+           national_ice_cream_production_level = as.numeric(national_ice_cream_production_level)) %>%
+    rdts()
+  
+  master <- master %>%
+    left_join(national_production_data)
+  
+  rm(national_production_data)
   
 #### Saving out master dataset ####
   write.csv(master, FOLDER("data/Master data.csv"))

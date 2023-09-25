@@ -239,14 +239,14 @@ tic()
     ylab("Buckets of ice cream sold") +
     scale_x_date(date_breaks = "1 year",
                  date_labels = "%Y") +
-    scale_y_continuous(breaks = seq(5000, 45000, 5000),
-                       limits = c(0, 45000),
-                       labels = (c(seq(5000, 45000, 5000))),
+    scale_y_continuous(breaks = seq(1250, 12500, 1250),
+                       limits = c(0, 12500),
+                       labels = (c(seq(1250, 12500, 1250))),
                        expand = c(0, 0)) +
     theme_dc() +
     # Conduct period
     geom_ribbon(aes(ymin = 0,
-                    ymax = conduct_period * 45000,
+                    ymax = conduct_period * 12500,
                     fill = (conduct_period == 1),
                     alpha = 0.05)) +
     scale_fill_manual(values = c("#000000", "#A7A7A7"),
